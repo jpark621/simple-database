@@ -41,12 +41,14 @@ def db_get(k, hash_index):
 		segment_num = get_segment_num()
 		filename = "database_segment" + str(segment_num) + ".csv"
 	else:
+		segment_num = get_segment_num()
 		for i in range(segment_num - 1, -1, -1):
 			d = load_index(i)
-			if k in d:
+			if int(k) in d:
 				segment_num = i
 				filename = "database_segment" + str(segment_num) + ".csv"
 				hash_index = d
+				break
 	if segment_num == -1:
 		return None
 
@@ -54,10 +56,10 @@ def db_get(k, hash_index):
 	with open(filename, "r") as f:
 		offset = hash_index[int(k)]
 		f.seek(offset)
-		line = f.readline()
+		line = f.readline()[:-1]
 
 		k_i, v_i = read_first_comma(line)
-		if k == k_i:
+		if int(k) == int(k_i):
 			ans = v_i
 	return ans
 
@@ -79,11 +81,12 @@ def get_segment_num():
 			line = f.readline()
 			if line == "":
 				break
+			line = line[:-1]
 
 			k_i, v_i = line.split(",")
 			if k == k_i:
 				return int(v_i)
-	raise Error("segment_num not in globals.csv")
+	raise Exception("segment_num not in globals.csv")
 
 import shutil
 def compact_segments():
@@ -97,7 +100,7 @@ def compact_segments():
 			with open(new_filename, 'w') as fw:
 				for k, offset in hash_index.items():
 					fr.seek(offset)
-					line = fr.readline()
+					line = fr.readline()[:-1]
 					new_offset = fw.tell()
 					fw.write(line + "\n")
 					new_hash_index[k] = new_offset
@@ -111,7 +114,7 @@ def db_set(k, v, hash_index):
 	do_write_new_file = False
 	with open(filename, 'a') as f:
 		offset = f.tell()
-		if offset == SEGMENT_SIZE:
+		if offset >= SEGMENT_SIZE:
 			save_index(hash_index, segment_num)
 			do_write_new_file = True
 		else:
@@ -143,6 +146,7 @@ def load_index(segment_num):
 			line = f.readline()
 			if line == "":
 				break
+			line = line[:-1]
 
 			k, offset = line.split(",")
 			d[int(k)] = int(offset)
